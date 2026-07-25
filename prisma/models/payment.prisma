@@ -1,0 +1,29 @@
+// ======================================================
+// PAYMENT TRANSACTION MODELS
+// ======================================================
+
+model PaymentTransaction {
+  id              String          @id @default(cuid())
+  userId          String
+  subscriptionId  String
+  subscription    Subscription    @relation(fields: [subscriptionId], references: [id])
+  
+  provider        String
+  reference       String          @unique
+  amount          Float
+  currency        String          @default("GHS")
+  
+  status          PaymentStatus   @default(PENDING)
+  responseData    String?
+  webhookData     String?
+  
+  paidAt          DateTime?
+  expiresAt       DateTime
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([reference])
+  @@map("payment_transactions")
+}
