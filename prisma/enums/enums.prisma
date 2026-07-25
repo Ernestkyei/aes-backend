@@ -1,0 +1,43 @@
+// ======================================================
+// ENUMS
+// ======================================================
+
+enum UserRole {
+  APPLICANT
+  ADMIN
+  STAFF
+}
+
+enum SubscriptionType {
+  UNDERGRAD
+  POSTGRAD
+  INTERNATIONAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  EXPIRED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_INFO
+  OFFERED
+  REJECTED
+  WAITLISTED
+  ENROLLED
+  WITHDRAWN
+}
+
+enum DocumentType {
+  TRANSCRIPT
+  CERTIFICATE
+  PASSPORT
+  RECOMMENDATION
+  STATEMENT
+  OTHER
+}

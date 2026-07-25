@@ -1,0 +1,82 @@
+// ======================================================
+// APPLICATION MODELS
+// ======================================================
+
+model Application {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  
+  // Personal Information
+  dateOfBirth     DateTime?
+  nationality     String?
+  countryOfResidence String?
+  address         String?
+  
+  // Academic Information
+  highSchool      String?
+  graduationYear  Int?
+  gpa             Float?
+  gpaScale        Float?          @default(4.0)
+  classRank       String?
+  classSize       Int?
+  
+  // Program Information
+  programChoice   String
+  
+  // Test Scores
+  satScore        Int?
+  actScore        Int?
+  ieltsScore      Float?
+  toeflScore      Int?
+  
+  // Work Experience
+  workExperience  String?
+  achievements    String?
+  extracurricular String?
+  personalStatement String?
+  
+  // Status
+  status          ApplicationStatus @default(DRAFT)
+  submittedAt     DateTime?
+  
+  // Admin Review Fields
+  reviewedAt      DateTime?
+  decisionDate    DateTime?
+  decisionNotes   String?
+  rejectionReason String?
+  
+  // Relations
+  documents       Document[]
+  statusHistory   ApplicationStatusHistory[]
+  adminNotes      AdminNote[]
+  
+  // Timestamps
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([programChoice])
+  @@map("applications")
+}
+
+// ======================================================
+// APPLICATION STATUS HISTORY
+// ======================================================
+
+model ApplicationStatusHistory {
+  id              String          @id @default(cuid())
+  applicationId   String
+  application     Application     @relation(fields: [applicationId], references: [id])
+  
+  oldStatus       ApplicationStatus?
+  newStatus       ApplicationStatus
+  changedBy       String
+  note            String?
+  
+  createdAt       DateTime        @default(now())
+
+  @@index([applicationId])
+  @@map("application_status_history")
+}
