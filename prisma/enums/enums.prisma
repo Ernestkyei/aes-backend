@@ -5,7 +5,7 @@
 enum UserRole {
   APPLICANT
   ADMIN
-  STAFF
+  
 }
 
 enum SubscriptionType {
