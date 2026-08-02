@@ -38,7 +38,7 @@ export const generatePaymentCode = () => {
 };
 
 // ============================================
-// STEP 3: Register Student
+// Register Student
 // ============================================
 export const registerStudent = async (userData) => {
   try {
@@ -145,7 +145,7 @@ export const registerStudent = async (userData) => {
 };
 
 // ============================================
-// STEP 6: Login
+// Login
 // ============================================
 export const login = async (email, password) => {
   try {
@@ -242,7 +242,7 @@ export const adminLogin = async (email, password) => {
 };
 
 // ============================================
-// STEP 7: Verify Payment Code
+// Verify Payment Code
 // ============================================
 export const verifyPaymentCode = async (userId, code) => {
   try {
