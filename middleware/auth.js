@@ -1,37 +1,63 @@
-import { verifyToken, getCurrentUser } from '../services/authService.js';
+// middleware/auth.js
+import { verifyToken } from "../services/authService.js";
 
-export const authMiddleware = async (req, res, next) => {
+export const protect = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Not authorized, no token' });
+
+    // Check if token exists
+    if (!authHeader || !authHeader.startsWith("Bearer")) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized, no token provided"
+      });
     }
 
-    const token = authHeader.split(' ')[1];
+    // Extract token
+    const token = authHeader.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized, invalid token format"
+      });
+    }
+
+    // Verify token
     const decoded = verifyToken(token);
-    if (!decoded || !decoded.userId) {
-      return res.status(401).json({ success: false, message: 'Not authorized, invalid token' });
+
+    if (!decoded) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized, invalid or expired token"
+      });
     }
 
-    const user = await getCurrentUser(decoded.userId);
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'User not found or inactive' });
-    }
-
-    req.user = user;
+    // Attach user to request
+    req.userId = decoded.userId;
+    req.user = decoded;
     next();
-  } catch (err) {
-    console.error('Auth middleware error:', err);
-    return res.status(500).json({ success: false, message: 'Authentication error' });
+
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({
+      success: false,
+      message: "Not authorized, authentication failed"
+    });
   }
 };
 
-export const adminMiddleware = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ success: false, message: 'Not authorized' });
+// Admin middleware
+export const admin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin only."
+    });
   }
-  if (req.user.role !== 'ADMIN') {
-    return res.status(403).json({ success: false, message: 'Admin access required' });
-  }
-  return next();
+  next();
 };
+
+// Export both middleware
+export const authMiddleware = protect;
+export const adminMiddleware = admin;
