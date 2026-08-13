@@ -1,3 +1,4 @@
+// routes/authRoutes.js
 import express from 'express';
 import {
   register,
@@ -17,27 +18,13 @@ import {
 
 const router = express.Router();
 
-// ============================================
-// PUBLIC ROUTES (No authentication required)
-// ============================================
-
-// Register - with validation
+// Public routes
 router.post('/register', validate(registerSchema), register);
-
-// User Login - with validation
 router.post('/login', validate(loginSchema), loginUser);
-
-// Admin Login - with validation
 router.post('/admin-login', validate(adminLoginSchema), loginAdmin);
 
-// ============================================
-// PROTECTED ROUTES (Authentication required)
-// ============================================
-
-// Verify payment - with validation
+// Protected routes
 router.post('/verify-payment', protect, validate(verifyPaymentSchema), verifyPayment);
-
-// Get current user profile
 router.get('/me', protect, getMe);
 
 export default router;

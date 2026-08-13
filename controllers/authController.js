@@ -1,3 +1,4 @@
+// controllers/authController.js
 import {
   registerStudent,
   login,
@@ -6,45 +7,112 @@ import {
   getCurrentUser,
 } from '../services/authService.js';
 
+// ============================================
+// REGISTER CONTROLLER
+// ============================================
 export const register = async (req, res) => {
-  const result = await registerStudent(req.body);
-  if (!result.success) {
-    return res.status(400).json(result);
+  try {
+    const result = await registerStudent(req.body);
+    if (!result.success) {
+      if (result.message === 'User with this email already exists') {
+        return res.status(409).json(result);
+      }
+      return res.status(400).json(result);
+    }
+    return res.status(201).json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: error.message,
+    });
   }
-  return res.status(201).json(result);
 };
 
+// ============================================
+// USER LOGIN CONTROLLER
+// ============================================
 export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-  const result = await login(email, password);
-  if (!result.success) {
-    return res.status(401).json(result);
+  try {
+    const { email, password } = req.body;
+    const result = await login(email, password);
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Login failed',
+      error: error.message,
+    });
   }
-  return res.status(200).json(result);
 };
 
+// ============================================
+// ADMIN LOGIN CONTROLLER
+// ============================================
 export const loginAdmin = async (req, res) => {
-  const { email, password } = req.body;
-  const result = await adminLogin(email, password);
-  if (!result.success) {
-    return res.status(401).json(result);
+  try {
+    const { email, password } = req.body;
+    const result = await adminLogin(email, password);
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Admin login failed',
+      error: error.message,
+    });
   }
-  return res.status(200).json(result);
 };
 
+// ============================================
+// VERIFY PAYMENT CONTROLLER
+// ============================================
 export const verifyPayment = async (req, res) => {
-  const { code } = req.body;
-  const result = await verifyPaymentCode(req.userId, code);
-  if (!result.success) {
-    return res.status(400).json(result);
+  try {
+    const { code } = req.body;
+    const result = await verifyPaymentCode(req.userId, code);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Payment verification failed',
+      error: error.message,
+    });
   }
-  return res.status(200).json(result);
 };
 
+// ============================================
+// GET CURRENT USER CONTROLLER
+// ============================================
 export const getMe = async (req, res) => {
-  const user = await getCurrentUser(req.userId);
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
+  try {
+    const userId = req.userId; // From auth middleware
+    const user = await getCurrentUser(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      user: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get user profile',
+      error: error.message,
+    });
   }
-  return res.status(200).json({ success: true, user });
 };
