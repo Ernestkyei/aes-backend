@@ -1,558 +1,382 @@
-// src/services/applicationService.js
+// import prisma from '../config/database.js';
 
-import prisma from '../config/database.js';
-import { ApplicationStatus } from '../types/index.js';
 
-// Get all applications with pagination and filters
-export const getAllApplications = function(page, limit, search, status, userId, callback) {
-  page = page || 1;
-  limit = limit || 10;
-  search = search || '';
-  status = status || '';
-  userId = userId || '';
+// // Shared select/include fragments to keep queries consistent
+// const userSelect = {
+//   id: true,
+//   firstName: true,
+//   lastName: true,
+//   email: true,
+//   phoneNumber: true,
+// };
 
-  const skip = (page - 1) * limit;
+// const documentSelect = {
+//   id: true,
+//   name: true,
+//   fileName: true,
+//   fileUrl: true,
+//   isVerified: true,
+//   type: true,
+//   createdAt: true,
+// };
 
-  // Build where clause
-  const where = {};
+// const defaultInclude = {
+//   user: { select: userSelect },
+//   documents: { select: documentSelect },
+//   _count: { select: { documents: true } },
+// };
 
-  if (search) {
-    where.OR = [
-      { program: { contains: search, mode: 'insensitive' } },
-      { academicYear: { contains: search, mode: 'insensitive' } },
-      { user: { firstName: { contains: search, mode: 'insensitive' } } },
-      { user: { lastName: { contains: search, mode: 'insensitive' } } },
-      { id: { contains: search, mode: 'insensitive' } },
-    ];
-  }
+// function maybeCallback(cb, err, result) {
+//   if (typeof cb === 'function') {
+//     return cb(err, result);
+//   }
+//   if (err) throw err;
+//   return result;
+// }
 
-  if (status) {
-    where.status = status;
-  }
+// /** Get all applications with pagination and filters. */
+// export const getAllApplications = async function(
+//   page = 1,
+//   limit = 10,
+//   search = '',
+//   status = '',
+//   userId = '',
+//   callback
+// ) {
+//   try {
+//     const skip = (page - 1) * limit;
+//     const where = {};
 
-  if (userId) {
-    where.userId = userId;
-  }
+//     if (search) {
+//       where.OR = [
+//         { program: { contains: search, mode: 'insensitive' } },
+//         { academicYear: { contains: search, mode: 'insensitive' } },
+//         { user: { firstName: { contains: search, mode: 'insensitive' } } },
+//         { user: { lastName: { contains: search, mode: 'insensitive' } } },
+//         { id: { contains: search, mode: 'insensitive' } },
+//       ];
+//     }
+//     if (status) where.status = status;
+//     if (userId) where.userId = userId;
 
-  prisma.application.findMany({
-    where,
-    skip,
-    take: limit,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phoneNumber: true,
-        },
-      },
-      documents: {
-        select: {
-          id: true,
-          name: true,
-          fileName: true,
-          fileUrl: true,
-          isVerified: true,
-        },
-      },
-      _count: {
-        select: {
-          documents: true,
-        },
-      },
-    },
-  })
-  .then(function(applications) {
-    prisma.application.count({ where })
-      .then(function(total) {
-        callback(null, {
-          data: applications,
-          pagination: {
-            page: page,
-            limit: limit,
-            total: total,
-            totalPages: Math.ceil(total / limit),
-          },
-        });
-      })
-      .catch(function(err) {
-        callback(err);
-      });
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     const [applications, total] = await Promise.all([
+//       prisma.application.findMany({
+//         where,
+//         skip,
+//         take: limit,
+//         orderBy: { createdAt: 'desc' },
+//         include: defaultInclude,
+//       }),
+//       prisma.application.count({ where }),
+//     ]);
 
-// Get application by ID
-export const getApplicationById = function(id, callback) {
-  prisma.application.findUnique({
-    where: { id },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phoneNumber: true,
-        },
-      },
-      documents: {
-        select: {
-          id: true,
-          name: true,
-          fileName: true,
-          fileUrl: true,
-          isVerified: true,
-          type: true,
-          createdAt: true,
-        },
-      },
-      _count: {
-        select: {
-          documents: true,
-        },
-      },
-    },
-  })
-  .then(function(application) {
-    if (!application) {
-      return callback(null, null);
-    }
-    callback(null, application);
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     const result = {
+//       data: applications,
+//       pagination: {
+//         page,
+//         limit,
+//         total,
+//         totalPages: Math.ceil(total / limit),
+//       },
+//     };
 
-// Create new application
-export const createApplication = function(data, callback) {
-  prisma.application.create({
-    data: {
-      userId: data.userId,
-      program: data.program,
-      programType: data.programType || 'UNDERGRAD',
-      academicYear: data.academicYear || '2026/2027',
-      status: ApplicationStatus.PENDING,
-      submitted: new Date(),
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phoneNumber: true,
-        },
-      },
-    },
-  })
-  .then(function(application) {
-    // Log activity
-    prisma.activityLog.create({
-      data: {
-        userId: data.userId,
-        action: 'APPLICATION_CREATED',
-        details: 'Application ' + application.id + ' created for program ' + application.program,
-      },
-    })
-    .then(function() {
-      callback(null, application);
-    })
-    .catch(function(err) {
-      callback(err);
-    });
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     return maybeCallback(callback, null, result);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
 
-// Update application
-export const updateApplication = function(id, data, userId, callback) {
-  prisma.application.update({
-    where: { id },
-    data: {
-      program: data.program,
-      programType: data.programType,
-      academicYear: data.academicYear,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-    },
-  })
-  .then(function(application) {
-    // Log activity
-    prisma.activityLog.create({
-      data: {
-        userId: userId,
-        action: 'APPLICATION_UPDATED',
-        details: 'Application ' + application.id + ' updated',
-      },
-    })
-    .then(function() {
-      callback(null, application);
-    })
-    .catch(function(err) {
-      callback(err);
-    });
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+// /** Get application by ID */
+// export const getApplicationById = async function(id, callback) {
+//   try {
+//     const application = await prisma.application.findUnique({
+//       where: { id },
+//       include: defaultInclude,
+//     });
+//     if (!application) return maybeCallback(callback, null, null);
+//     return maybeCallback(callback, null, application);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
 
-// Update application status
-export const updateStatus = function(id, status, userId, notes, callback) {
-  notes = notes || '';
+// /** Create new application */
+// export const createApplication = async function(data, callback) {
+//   try {
+//     const application = await prisma.application.create({
+//       data: {
+//         userId: data.userId,
+//         program: data.program,
+//         programType: data.programType || 'UNDERGRAD',
+//         academicYear: data.academicYear || '2026/2027',
+//         status: ApplicationStatus.PENDING,
+//         submitted: new Date(),
+//       },
+//       include: { user: { select: userSelect } },
+//     });
 
-  prisma.application.update({
-    where: { id },
-    data: { status: status },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-    },
-  })
-  .then(function(application) {
-    var logDetails = 'Application ' + application.id + ' status changed to ' + status;
-    if (notes) {
-      logDetails = logDetails + '. Notes: ' + notes;
-    }
+//     // Log activity (fire-and-forget but await to ensure consistency)
+//     await prisma.activityLog.create({
+//       data: {
+//         userId: data.userId,
+//         action: 'APPLICATION_CREATED',
+//         details: `Application ${application.id} created for program ${application.program}`,
+//       },
+//     });
 
-    prisma.activityLog.create({
-      data: {
-        userId: userId,
-        action: 'APPLICATION_' + status,
-        details: logDetails,
-      },
-    })
-    .then(function() {
-      callback(null, application);
-    })
-    .catch(function(err) {
-      callback(err);
-    });
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     return maybeCallback(callback, null, application);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
 
-// Delete application
-export const deleteApplication = function(id, userId, callback) {
-  prisma.application.delete({
-    where: { id },
-  })
-  .then(function(application) {
-    prisma.activityLog.create({
-      data: {
-        userId: userId,
-        action: 'APPLICATION_DELETED',
-        details: 'Application ' + application.id + ' deleted',
-      },
-    })
-    .then(function() {
-      callback(null, application);
-    })
-    .catch(function(err) {
-      callback(err);
-    });
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+// /** Update application */
+// export const updateApplication = async function(id, data, userId, callback) {
+//   try {
+//     const application = await prisma.application.update({
+//       where: { id },
+//       data: {
+//         program: data.program,
+//         programType: data.programType,
+//         academicYear: data.academicYear,
+//       },
+//       include: { user: { select: userSelect } },
+//     });
 
-// Get application statistics
-export const getStats = function(callback) {
-  var total, pending, review, approved, rejected, totalThisMonth, approvedThisMonth;
+//     await prisma.activityLog.create({
+//       data: {
+//         userId: userId,
+//         action: 'APPLICATION_UPDATED',
+//         details: `Application ${application.id} updated`,
+//       },
+//     });
 
-  prisma.application.count()
-    .then(function(result) {
-      total = result;
-      return prisma.application.count({ where: { status: 'PENDING' } });
-    })
-    .then(function(result) {
-      pending = result;
-      return prisma.application.count({ where: { status: 'REVIEW' } });
-    })
-    .then(function(result) {
-      review = result;
-      return prisma.application.count({ where: { status: 'APPROVED' } });
-    })
-    .then(function(result) {
-      approved = result;
-      return prisma.application.count({ where: { status: 'REJECTED' } });
-    })
-    .then(function(result) {
-      rejected = result;
-      return prisma.application.count({
-        where: {
-          submitted: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          },
-        },
-      });
-    })
-    .then(function(result) {
-      totalThisMonth = result;
-      return prisma.application.count({
-        where: {
-          status: 'APPROVED',
-          submitted: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          },
-        },
-      });
-    })
-    .then(function(result) {
-      approvedThisMonth = result;
-      callback(null, {
-        total: total,
-        pending: pending,
-        review: review,
-        approved: approved,
-        rejected: rejected,
-        totalThisMonth: totalThisMonth,
-        approvedThisMonth: approvedThisMonth,
-      });
-    })
-    .catch(function(err) {
-      callback(err);
-    });
-};
+//     return maybeCallback(callback, null, application);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
 
-// Get applications by status
-export const getApplicationsByStatus = function(status, callback) {
-  prisma.application.findMany({
-    where: { status: status },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-  .then(function(applications) {
-    callback(null, applications);
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+// /** Update application status */
+// export const updateStatus = async function(id, status, userId, notes = '', callback) {
+//   try {
+//     const application = await prisma.application.update({
+//       where: { id },
+//       data: { status },
+//       include: { user: { select: userSelect } },
+//     });
 
-// Search applications
-export const searchApplications = function(query, callback) {
-  prisma.application.findMany({
-    where: {
-      OR: [
-        { program: { contains: query, mode: 'insensitive' } },
-        { academicYear: { contains: query, mode: 'insensitive' } },
-        { user: { firstName: { contains: query, mode: 'insensitive' } } },
-        { user: { lastName: { contains: query, mode: 'insensitive' } } },
-        { id: { contains: query, mode: 'insensitive' } },
-      ],
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-      _count: {
-        select: {
-          documents: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-  .then(function(applications) {
-    callback(null, applications);
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     let logDetails = `Application ${application.id} status changed to ${status}`;
+//     if (notes) logDetails += `. Notes: ${notes}`;
 
-// Get applications by user ID
-export const getApplicationsByUserId = function(userId, callback) {
-  prisma.application.findMany({
-    where: { userId: userId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-      documents: {
-        select: {
-          id: true,
-          name: true,
-          isVerified: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-  .then(function(applications) {
-    callback(null, applications);
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     await prisma.activityLog.create({
+//       data: {
+//         userId: userId,
+//         action: `APPLICATION_${status}`,
+//         details: logDetails,
+//       },
+//     });
 
-// Bulk update application status
-export const bulkUpdateStatus = function(ids, status, userId, callback) {
-  prisma.application.updateMany({
-    where: {
-      id: { in: ids },
-    },
-    data: { status: status },
-  })
-  .then(function(result) {
-    // Log activity for each application
-    var logPromises = ids.map(function(id) {
-      return prisma.activityLog.create({
-        data: {
-          userId: userId,
-          action: 'APPLICATION_' + status + '_BULK',
-          details: 'Application ' + id + ' status changed to ' + status + ' (bulk update)',
-        },
-      });
-    });
+//     return maybeCallback(callback, null, application);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
 
-    Promise.all(logPromises)
-      .then(function() {
-        callback(null, result);
-      })
-      .catch(function(err) {
-        callback(err);
-      });
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+// /** Delete application */
+// export const deleteApplication = async function(id, userId, callback) {
+//   try {
+//     const application = await prisma.application.delete({ where: { id } });
 
-// Get application timeline
-export const getApplicationTimeline = function(applicationId, callback) {
-  var applicationData;
+//     await prisma.activityLog.create({
+//       data: {
+//         userId: userId,
+//         action: 'APPLICATION_DELETED',
+//         details: `Application ${application.id} deleted`,
+//       },
+//     });
 
-  prisma.application.findUnique({
-    where: { id: applicationId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-        },
-      },
-      documents: true,
-    },
-  })
-  .then(function(application) {
-    if (!application) {
-      return callback(null, null);
-    }
-    applicationData = application;
-    return prisma.activityLog.findMany({
-      where: {
-        details: { contains: applicationId },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
-  })
-  .then(function(logs) {
-    callback(null, {
-      application: applicationData,
-      activity: logs,
-    });
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     return maybeCallback(callback, null, application);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
 
-// Check if user has an existing application
-export const checkExistingApplication = function(userId, program, academicYear, callback) {
-  prisma.application.findFirst({
-    where: {
-      userId: userId,
-      program: program,
-      academicYear: academicYear,
-    },
-  })
-  .then(function(existing) {
-    callback(null, !!existing);
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+// /** Get application statistics */
+// export const getStats = async function(callback) {
+//   try {
+//     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-// Get application count by program type
-export const getStatsByProgramType = function(callback) {
-  prisma.application.groupBy({
-    by: ['programType'],
-    _count: {
-      programType: true,
-    },
-  })
-  .then(function(stats) {
-    callback(null, stats);
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     const [
+//       total,
+//       pending,
+//       review,
+//       approved,
+//       rejected,
+//       totalThisMonth,
+//       approvedThisMonth,
+//     ] = await Promise.all([
+//       prisma.application.count(),
+//       prisma.application.count({ where: { status: 'PENDING' } }),
+//       prisma.application.count({ where: { status: 'REVIEW' } }),
+//       prisma.application.count({ where: { status: 'APPROVED' } }),
+//       prisma.application.count({ where: { status: 'REJECTED' } }),
+//       prisma.application.count({ where: { submitted: { gte: startOfMonth } } }),
+//       prisma.application.count({ where: { status: 'APPROVED', submitted: { gte: startOfMonth } } }),
+//     ]);
 
-// Get application count by academic year
-export const getStatsByAcademicYear = function(callback) {
-  prisma.application.groupBy({
-    by: ['academicYear'],
-    _count: {
-      academicYear: true,
-    },
-  })
-  .then(function(stats) {
-    callback(null, stats);
-  })
-  .catch(function(err) {
-    callback(err);
-  });
-};
+//     const result = {
+//       total,
+//       pending,
+//       review,
+//       approved,
+//       rejected,
+//       totalThisMonth,
+//       approvedThisMonth,
+//     };
+
+//     return maybeCallback(callback, null, result);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+// /** Get applications by status */
+// export const getApplicationsByStatus = async function(status, callback) {
+//   try {
+//     const applications = await prisma.application.findMany({
+//       where: { status },
+//       include: { user: { select: userSelect } },
+//       orderBy: { createdAt: 'desc' },
+//     });
+//     return maybeCallback(callback, null, applications);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+// /** Search applications */
+// export const searchApplications = async function(query, callback) {
+//   try {
+//     const applications = await prisma.application.findMany({
+//       where: {
+//         OR: [
+//           { program: { contains: query, mode: 'insensitive' } },
+//           { academicYear: { contains: query, mode: 'insensitive' } },
+//           { user: { firstName: { contains: query, mode: 'insensitive' } } },
+//           { user: { lastName: { contains: query, mode: 'insensitive' } } },
+//           { id: { contains: query, mode: 'insensitive' } },
+//         ],
+//       },
+//       include: defaultInclude,
+//       orderBy: { createdAt: 'desc' },
+//     });
+//     return maybeCallback(callback, null, applications);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+// /** Get applications by user ID */
+// export const getApplicationsByUserId = async function(userId, callback) {
+//   try {
+//     const applications = await prisma.application.findMany({
+//       where: { userId },
+//       include: {
+//         user: { select: userSelect },
+//         documents: { select: documentSelect },
+//       },
+//       orderBy: { createdAt: 'desc' },
+//     });
+//     return maybeCallback(callback, null, applications);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+// /** Bulk update application status */
+// export const bulkUpdateStatus = async function(ids, status, userId, callback) {
+//   try {
+//     const result = await prisma.application.updateMany({
+//       where: { id: { in: ids } },
+//       data: { status },
+//     });
+
+//     const logPromises = ids.map((id) =>
+//       prisma.activityLog.create({
+//         data: {
+//           userId: userId,
+//           action: `APPLICATION_${status}_BULK`,
+//           details: `Application ${id} status changed to ${status} (bulk update)`,
+//         },
+//       })
+//     );
+
+//     await Promise.all(logPromises);
+//     return maybeCallback(callback, null, result);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+// /** Get application timeline */
+// export const getApplicationTimeline = async function(applicationId, callback) {
+//   try {
+//     const application = await prisma.application.findUnique({
+//       where: { id: applicationId },
+//       include: {
+//         user: { select: userSelect },
+//         documents: true,
+//       },
+//     });
+
+//     if (!application) return maybeCallback(callback, null, null);
+//     const logs = await prisma.activityLog.findMany({
+//       where: { details: { contains: applicationId } },
+//       orderBy: { createdAt: 'desc' },
+//       take: 20,
+//     });
+//     return maybeCallback(callback, null, { application, activity: logs });
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+
+// /** Check if user has an existing application */
+// export const checkExistingApplication = async function(userId, program, academicYear, callback) {
+//   try {
+//     const existing = await prisma.application.findFirst({
+//       where: { userId, program, academicYear },
+//     });
+//     return maybeCallback(callback, null, !!existing);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+// /** Get application count by program type */
+// export const getStatsByProgramType = async function(callback) {
+//   try {
+//     const stats = await prisma.application.groupBy({
+//       by: ['programType'],
+//       _count: { programType: true },
+//     });
+//     return maybeCallback(callback, null, stats);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
+
+// /** Get application count by academic year */
+// export const getStatsByAcademicYear = async function(callback) {
+//   try {
+//     const stats = await prisma.application.groupBy({
+//       by: ['academicYear'],
+//       _count: { academicYear: true },
+//     });
+//     return maybeCallback(callback, null, stats);
+//   } catch (err) {
+//     return maybeCallback(callback, err);
+//   }
+// };
