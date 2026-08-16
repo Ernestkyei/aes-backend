@@ -2,6 +2,7 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
+import applicantRoutes from './routes/applicantRoutes.js'; 
 
 const app = express();
 
@@ -39,6 +40,19 @@ app.use(morgan('dev'));
 // Routes
 // ============================================
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/applicants', applicantRoutes);  // ADD THIS
+
+// ============================================
+// Serve Static Files (for admission letters)
+// ============================================
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve uploaded files (admission letters, documents)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check
 app.get('/health', (req, res) => {
