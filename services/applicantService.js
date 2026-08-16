@@ -1,4 +1,11 @@
 import prisma from '../config/database.js';
+import PDFDocument from 'pdfkit';
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Shared select/include fragments to keep queries consistent
 const userSelect = {
@@ -14,7 +21,7 @@ const documentSelect = {
   name: true,
   fileName: true,
   fileUrl: true,
-  status: true,        // ADDED
+  status: true,        
   isVerified: true,
   type: true,
   createdAt: true,
@@ -72,11 +79,11 @@ export const getAllApplications = async function(
 
     if (search) {
       where.OR = [
-        { programChoice: { contains: search, mode: 'insensitive' } },  // UPDATED
+        { programChoice: { contains: search, mode: 'insensitive' } }, 
         { academicYear: { contains: search, mode: 'insensitive' } },
-        { ref: { contains: search, mode: 'insensitive' } },           // ADDED
-        { firstName: { contains: search, mode: 'insensitive' } },     // ADDED
-        { lastName: { contains: search, mode: 'insensitive' } },      // ADDED
+        { ref: { contains: search, mode: 'insensitive' } },           
+        { firstName: { contains: search, mode: 'insensitive' } },     
+        { lastName: { contains: search, mode: 'insensitive' } },      
         { user: { firstName: { contains: search, mode: 'insensitive' } } },
         { user: { lastName: { contains: search, mode: 'insensitive' } } },
         { id: { contains: search, mode: 'insensitive' } },
@@ -122,11 +129,11 @@ export const getApplicationById = async function(id, callback) {
       where: { id },
       include: {
         ...defaultInclude,
-        statusHistory: {            // ADDED
+        statusHistory: {            
           orderBy: { createdAt: 'desc' },
           take: 10,
         },
-        adminNotes: true,           // ADDED
+        adminNotes: true,           
       },
     });
     if (!application) return maybeCallback(callback, null, null);
@@ -171,7 +178,7 @@ export const createApplication = async function(data, callback) {
         wassceAggregate: data.wassceAggregate,
         
         // Program Information
-        programChoice: data.programChoice,  // UPDATED
+        programChoice: data.programChoice,
         programType: data.programType || 'UNDERGRAD',
         academicYear: data.academicYear || '2026/2027',
         
@@ -188,7 +195,7 @@ export const createApplication = async function(data, callback) {
         personalStatement: data.personalStatement,
         
         // Status
-        status: 'DRAFT',                    // UPDATED
+        status: 'DRAFT',
         open: true,
         isDraft: true,
         submittedAt: data.submittedAt ? new Date(data.submittedAt) : undefined,
@@ -273,7 +280,7 @@ export const updateApplication = async function(id, data, userId, callback) {
         wassceAggregate: data.wassceAggregate,
         
         // Program Information
-        programChoice: data.programChoice,  // UPDATED
+        programChoice: data.programChoice,
         programType: data.programType,
         academicYear: data.academicYear,
         
@@ -329,9 +336,7 @@ export const updateStatus = async function(id, status, userId, notes = '', callb
       where: { id },
       data: { 
         status,
-        // If status is OFFERED, set decisionDate
         ...(status === 'OFFERED' ? { decisionDate: new Date() } : {}),
-        // If status is REJECTED, set decisionDate
         ...(status === 'REJECTED' ? { decisionDate: new Date() } : {}),
       },
       include: { 
@@ -387,7 +392,6 @@ export const submitApplication = async function(id, userId, callback) {
       },
     });
 
-    // Create status history entry
     await prisma.applicationStatusHistory.create({
       data: {
         applicationId: id,
@@ -418,7 +422,6 @@ export const submitApplication = async function(id, userId, callback) {
 
 export const deleteApplication = async function(id, userId, callback) {
   try {
-    // Delete related records first
     await prisma.educationRecord.deleteMany({
       where: { applicationId: id }
     });
@@ -568,7 +571,6 @@ export const getApplicationsByUserId = async function(userId, callback) {
 
 export const bulkUpdateStatus = async function(ids, status, userId, callback) {
   try {
-    // Get current applications to track old status
     const currentApps = await prisma.application.findMany({
       where: { id: { in: ids } },
       select: { id: true, status: true }
@@ -579,7 +581,6 @@ export const bulkUpdateStatus = async function(ids, status, userId, callback) {
       data: { status },
     });
 
-    // Create status history entries for each
     const historyPromises = currentApps.map(app =>
       prisma.applicationStatusHistory.create({
         data: {
@@ -673,9 +674,6 @@ export const getStatsByProgramType = async function(callback) {
   }
 };
 
-
-
-
 // ======================================================
 // GET STATS BY ACADEMIC YEAR
 // ======================================================
@@ -690,4 +688,630 @@ export const getStatsByAcademicYear = async function(callback) {
   } catch (err) {
     return maybeCallback(callback, err);
   }
+};
+
+// ======================================================
+// ======================================================
+// NEW: ACCESS CODE FUNCTIONS
+// ======================================================
+// ======================================================
+
+// ======================================================
+// GENERATE ACCESS CODE (Admin Only)
+// ======================================================
+
+export const generateAccessCode = async function(applicationId, adminId, callback) {
+  try {
+    const year = new Date().getFullYear();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const code = `AES-${year}-${random}`;
+
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId }
+    });
+
+    if (!application) {
+      return maybeCallback(callback, new Error('Application not found'), null);
+    }
+
+    // Check if code already exists
+    const existingCode = await prisma.accessCode.findUnique({
+      where: { code }
+    });
+
+    if (existingCode) {
+      return maybeCallback(callback, new Error('Code already exists, try again'), null);
+    }
+
+    const accessCode = await prisma.accessCode.create({
+      data: {
+        code: code,
+        applicationId: applicationId,
+        generatedBy: adminId,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    });
+
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: { accessCode: code },
+    });
+
+    return maybeCallback(callback, null, {
+      code: code,
+      applicationId: applicationId,
+      expiresAt: accessCode.expiresAt,
+    });
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// VALIDATE ACCESS CODE (Public - No Login)
+// ======================================================
+
+export const validateAccessCode = async function(code, callback) {
+  try {
+    const accessCode = await prisma.accessCode.findUnique({
+      where: { code },
+      include: {
+        application: {
+          include: {
+            educationRecord: { include: { subjects: true } },
+            documents: true,
+            statusHistory: {
+              orderBy: { createdAt: 'desc' },
+              take: 10,
+            },
+          }
+        }
+      }
+    });
+
+    if (!accessCode) {
+      return maybeCallback(callback, new Error('Invalid access code'), null);
+    }
+
+    if (!accessCode.isActive) {
+      return maybeCallback(callback, new Error('Access code is no longer active'), null);
+    }
+
+    if (accessCode.expiresAt && new Date() > accessCode.expiresAt) {
+      return maybeCallback(callback, new Error('Access code has expired'), null);
+    }
+
+    // Mark as used if not already
+    if (!accessCode.isUsed) {
+      await prisma.accessCode.update({
+        where: { id: accessCode.id },
+        data: {
+          isUsed: true,
+          usedAt: new Date(),
+        },
+      });
+    }
+
+    return maybeCallback(callback, null, accessCode.application);
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// GET APPLICATION BY ACCESS CODE (Public - No Login)
+// ======================================================
+
+export const getApplicationByCode = async function(code, callback) {
+  try {
+    const application = await prisma.application.findUnique({
+      where: { accessCode: code },
+      include: {
+        educationRecord: { include: { subjects: true } },
+        documents: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+      }
+    });
+
+    if (!application) {
+      return maybeCallback(callback, new Error('Application not found'), null);
+    }
+
+    return maybeCallback(callback, null, application);
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// UPDATE APPLICATION BY ACCESS CODE (Public - No Login)
+// ======================================================
+
+export const updateApplicationByCode = async function(code, data, callback) {
+  try {
+    const application = await prisma.application.findUnique({
+      where: { accessCode: code },
+      select: { id: true, status: true }
+    });
+
+    if (!application) {
+      return maybeCallback(callback, new Error('Application not found'), null);
+    }
+
+    if (!['DRAFT', 'NEEDS_INFO'].includes(application.status)) {
+      return maybeCallback(callback, new Error('Application cannot be modified at this stage'), null);
+    }
+
+    const updated = await prisma.application.update({
+      where: { id: application.id },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        gender: data.gender,
+        nationality: data.nationality,
+        phoneNumber: data.phoneNumber,
+        email: data.email,
+        address: data.address,
+        city: data.city,
+        country: data.country,
+        countryOfResidence: data.countryOfResidence,
+        highSchool: data.highSchool,
+        graduationYear: data.graduationYear,
+        gpa: data.gpa,
+        gpaScale: data.gpaScale || 4.0,
+        wassceAggregate: data.wassceAggregate,
+        programChoice: data.programChoice,
+        programType: data.programType,
+        academicYear: data.academicYear,
+        satScore: data.satScore,
+        actScore: data.actScore,
+        ieltsScore: data.ieltsScore,
+        toeflScore: data.toeflScore,
+        workExperience: data.workExperience,
+        achievements: data.achievements,
+        extracurricular: data.extracurricular,
+        personalStatement: data.personalStatement,
+      },
+      include: {
+        educationRecord: { include: { subjects: true } },
+      }
+    });
+
+    return maybeCallback(callback, null, updated);
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// SUBMIT APPLICATION BY ACCESS CODE (Public - No Login)
+// ======================================================
+
+export const submitApplicationByCode = async function(code, callback) {
+  try {
+    const application = await prisma.application.findUnique({
+      where: { accessCode: code },
+      select: { id: true, status: true }
+    });
+
+    if (!application) {
+      return maybeCallback(callback, new Error('Application not found'), null);
+    }
+
+    if (application.status !== 'DRAFT') {
+      return maybeCallback(callback, new Error('Only draft applications can be submitted'), null);
+    }
+
+    const updated = await prisma.application.update({
+      where: { id: application.id },
+      data: {
+        status: 'SUBMITTED',
+        isDraft: false,
+        submittedAt: new Date(),
+      },
+      include: {
+        educationRecord: { include: { subjects: true } },
+        documents: true,
+      }
+    });
+
+    await prisma.applicationStatusHistory.create({
+      data: {
+        applicationId: application.id,
+        oldStatus: 'DRAFT',
+        newStatus: 'SUBMITTED',
+        changedBy: 'applicant',
+        note: 'Application submitted via access code',
+      },
+    });
+
+    await prisma.accessCode.update({
+      where: { code },
+      data: {
+        isUsed: true,
+        usedAt: new Date(),
+      },
+    });
+
+    return maybeCallback(callback, null, updated);
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// RESEND ACCESS CODE (Admin Only)
+// ======================================================
+
+export const resendAccessCode = async function(applicationId, callback) {
+  try {
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+      select: { accessCode: true, email: true, firstName: true, lastName: true }
+    });
+
+    if (!application || !application.accessCode) {
+      return maybeCallback(callback, new Error('No access code found'), null);
+    }
+
+    // Here you would send email/SMS
+    // For now, just return the code
+    return maybeCallback(callback, null, {
+      code: application.accessCode,
+      message: 'Access code resent successfully',
+    });
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// GENERATE BULK ACCESS CODES (Admin Only)
+// ======================================================
+
+export const generateBulkAccessCodes = async function(applicationIds, adminId, callback) {
+  try {
+    const results = [];
+    
+    for (const id of applicationIds) {
+      const result = await new Promise((resolve, reject) => {
+        generateAccessCode(id, adminId, (err, res) => {
+          if (err) reject(err);
+          else resolve(res);
+        });
+      });
+      results.push(result);
+    }
+
+    return maybeCallback(callback, null, results);
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// ======================================================
+// NEW: ADMISSION LETTER FUNCTIONS
+// ======================================================
+// ======================================================
+
+// ======================================================
+// GENERATE ADMISSION LETTER (Admin Only)
+// ======================================================
+
+export const generateAdmissionLetter = async function(applicationId, callback) {
+  try {
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        educationRecord: { include: { subjects: true } },
+        user: true,
+      }
+    });
+
+    if (!application) {
+      return maybeCallback(callback, new Error('Application not found'), null);
+    }
+
+    if (application.status !== 'OFFERED') {
+      return maybeCallback(callback, new Error('Application has not been offered admission'), null);
+    }
+
+    // Create PDF
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+    });
+
+    const outputDir = path.join(__dirname, '../../uploads/admission-letters');
+    await fs.ensureDir(outputDir);
+
+    const fileName = `admission-letter-${application.ref || application.id}.pdf`;
+    const filePath = path.join(outputDir, fileName);
+
+    const writeStream = fs.createWriteStream(filePath);
+    doc.pipe(writeStream);
+
+    // Header
+    doc
+      .fontSize(24)
+      .font('Helvetica-Bold')
+      .fillColor('#1a237e')
+      .text('UNIVERSITY OF GHANA', { align: 'center' })
+      .moveDown(0.5);
+
+    doc
+      .fontSize(16)
+      .font('Helvetica')
+      .fillColor('#333333')
+      .text('OFFICE OF THE REGISTRAR', { align: 'center' })
+      .moveDown(0.5);
+
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(550, doc.y)
+      .strokeColor('#1a237e')
+      .lineWidth(2)
+      .stroke()
+      .moveDown(1.5);
+
+    doc
+      .fontSize(20)
+      .font('Helvetica-Bold')
+      .fillColor('#1a237e')
+      .text('ADMISSION LETTER', { align: 'center' })
+      .moveDown(2);
+
+    doc
+      .fontSize(12)
+      .font('Helvetica')
+      .fillColor('#333333')
+      .text(`Ref: ${application.ref || application.id}`, { align: 'right' })
+      .text(`Date: ${new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })}`, { align: 'right' })
+      .moveDown(2);
+
+    doc
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .text(`Dear ${application.firstName} ${application.lastName},`)
+      .moveDown(1);
+
+    doc
+      .fontSize(12)
+      .font('Helvetica')
+      .text(
+        `We are pleased to inform you that you have been offered admission to the ` +
+        `${application.programChoice} program for the ` +
+        `${application.academicYear} academic year.`,
+        { align: 'justify' }
+      )
+      .moveDown(1);
+
+    doc.text(
+      `This offer is based on your academic qualifications and performance in the ` +
+      `admission process. You have been selected among many qualified candidates.`,
+      { align: 'justify' }
+    )
+    .moveDown(1);
+
+    doc
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .text('Important Information')
+      .moveDown(0.5);
+
+    doc
+      .fontSize(12)
+      .font('Helvetica')
+      .text('1. Program Details:', { underline: true })
+      .moveDown(0.3);
+
+    const details = [
+      `   • Program: ${application.programChoice}`,
+      `   • Program Type: ${application.programType || 'Undergraduate'}`,
+      `   • Academic Year: ${application.academicYear}`,
+      `   • Duration: 4 Years (Full-Time)`,
+    ];
+    details.forEach(line => doc.text(line))
+    .moveDown(0.5);
+
+    doc
+      .text('2. Registration Dates:')
+      .moveDown(0.3);
+
+    const dates = [
+      `   • Registration Opens: ${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}`,
+      `   • Registration Closes: ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}`,
+      `   • Lectures Begin: ${new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toLocaleDateString()}`,
+    ];
+    dates.forEach(line => doc.text(line))
+    .moveDown(0.5);
+
+    doc
+      .text('3. Required Documents:')
+      .moveDown(0.3);
+
+    const documents = [
+      '   • WASSCE Certificate (Original)',
+      '   • Birth Certificate',
+      '   • National ID Card',
+      '   • Passport Photographs (2 copies)',
+      '   • Medical Report',
+    ];
+    documents.forEach(line => doc.text(line))
+    .moveDown(1);
+
+    doc
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .text('Academic Requirements')
+      .moveDown(0.5);
+
+    doc
+      .fontSize(12)
+      .font('Helvetica')
+      .text(
+        `You are required to have a minimum aggregate of ${application.wassceAggregate || '10'} ` +
+        `in WASSCE with core subjects (Mathematics, English, and Integrated Science) and ` +
+        `the required elective subjects.`
+      )
+      .moveDown(1);
+
+    doc
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .text('Contact Us')
+      .moveDown(0.5);
+
+    doc
+      .fontSize(12)
+      .font('Helvetica')
+      .text('For further inquiries, please contact:')
+      .moveDown(0.3);
+
+    const contacts = [
+      '   📞 Phone: +233 302 123 456',
+      '   📧 Email: admissions@university.edu.gh',
+      '   🌐 Website: www.university.edu.gh',
+      '   📍 Address: P.O. Box 123, Legon, Accra, Ghana',
+    ];
+    contacts.forEach(line => doc.text(line))
+    .moveDown(1);
+
+    doc
+      .fontSize(12)
+      .text('Yours sincerely,')
+      .moveDown(1.5);
+
+    doc
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .text('Prof. John Doe')
+      .text('Registrar')
+      .text('University of Ghana')
+      .moveDown(0.5);
+
+    doc
+      .fontSize(10)
+      .font('Helvetica')
+      .fillColor('#666666')
+      .text(
+        'This is a computer-generated letter and does not require a signature.',
+        { align: 'center' }
+      )
+      .moveDown(0.5);
+
+    doc
+      .fontSize(10)
+      .fillColor('#999999')
+      .text(
+        '© University of Ghana | All Rights Reserved',
+        { align: 'center' }
+      );
+
+    doc.end();
+
+    await new Promise((resolve) => {
+      writeStream.on('finish', resolve);
+    });
+
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: {
+        admissionLetterUrl: `/uploads/admission-letters/${fileName}`,
+        decisionDate: new Date(),
+      },
+    });
+
+    return maybeCallback(callback, null, {
+      success: true,
+      message: 'Admission letter generated successfully',
+      filePath: `/uploads/admission-letters/${fileName}`,
+      fileName: fileName,
+    });
+
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// DOWNLOAD ADMISSION LETTER BY CODE (Public - No Login)
+// ======================================================
+
+export const downloadAdmissionLetterByCode = async function(code, callback) {
+  try {
+    const application = await prisma.application.findUnique({
+      where: { accessCode: code },
+      select: { admissionLetterUrl: true, ref: true, id: true }
+    });
+
+    if (!application) {
+      return maybeCallback(callback, new Error('Application not found'), null);
+    }
+
+    if (!application.admissionLetterUrl) {
+      return maybeCallback(callback, new Error('Admission letter not found'), null);
+    }
+
+    const filePath = path.join(__dirname, '../..', application.admissionLetterUrl);
+    const fileName = `admission-letter-${application.ref || application.id}.pdf`;
+
+    // Check if file exists
+    if (!await fs.pathExists(filePath)) {
+      return maybeCallback(callback, new Error('Admission letter file not found'), null);
+    }
+
+    return maybeCallback(callback, null, {
+      filePath: filePath,
+      fileName: fileName,
+    });
+  } catch (err) {
+    return maybeCallback(callback, err);
+  }
+};
+
+// ======================================================
+// EXPORT ALL FUNCTIONS
+// ======================================================
+
+export default {
+  getAllApplications,
+  getApplicationById,
+  createApplication,
+  updateApplication,
+  updateStatus,
+  submitApplication,
+  deleteApplication,
+  getStats,
+  getApplicationsByStatus,
+  searchApplications,
+  getApplicationsByUserId,
+  bulkUpdateStatus,
+  getApplicationTimeline,
+  checkExistingApplication,
+  getStatsByProgramType,
+  getStatsByAcademicYear,
+  
+  // Access Code Functions
+  generateAccessCode,
+  validateAccessCode,
+  getApplicationByCode,
+  updateApplicationByCode,
+  submitApplicationByCode,
+  resendAccessCode,
+  generateBulkAccessCodes,
+  
+  // Admission Letter Functions
+  generateAdmissionLetter,
+  downloadAdmissionLetterByCode,
 };

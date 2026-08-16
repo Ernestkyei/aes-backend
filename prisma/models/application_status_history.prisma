@@ -1,0 +1,19 @@
+// ======================================================
+// APPLICATION STATUS HISTORY
+// ======================================================
+
+model ApplicationStatusHistory {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+
+  oldStatus ApplicationStatus?
+  newStatus ApplicationStatus
+  changedBy String
+  note      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([applicationId])
+  @@map("application_status_history")
+}
