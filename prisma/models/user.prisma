@@ -30,37 +30,6 @@ model User {
 }
 
 // ======================================================
-// SUBSCRIPTION MODELS
-// ======================================================
-
-model Subscription {
-  id              String          @id @default(cuid())
-  userId          String          @unique
-  user            User            @relation(fields: [userId], references: [id])
-  type            SubscriptionType
-  amount          Float
-  currency        String          @default("GHS")
-  paymentCode     String?         @unique
-  isValid         Boolean         @default(false)
-  validUntil      DateTime?
-  paymentId       String?         @unique
-  paymentStatus   PaymentStatus   @default(PENDING)
-  paidAt          DateTime?
-  
-  // Relations
-  paymentCodeRef  PaymentCode?
-  transactions    PaymentTransaction[]
-  
-  // Timestamps
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-
-  @@index([userId])
-  @@index([paymentCode])
-  @@map("subscriptions")
-}
-
-// ======================================================
 // PAYMENT CODE MODELS
 // ======================================================
 
@@ -83,36 +52,6 @@ model PaymentCode {
   @@index([code])
   @@index([userId])
   @@map("payment_codes")
-}
-
-// ======================================================
-// DOCUMENT MODELS
-// ======================================================
-
-model Document {
-  id              String          @id @default(cuid())
-  userId          String
-  user            User            @relation(fields: [userId], references: [id])
-  applicationId   String?
-  application     Application?    @relation(fields: [applicationId], references: [id])
-  
-  type            DocumentType
-  name            String
-  fileName        String
-  fileUrl         String
-  fileSize        Int?
-  mimeType        String?
-  isVerified      Boolean         @default(false)
-  verifiedBy      String?
-  verifiedAt      DateTime?
-  
-  // Timestamps
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-
-  @@index([userId])
-  @@index([applicationId])
-  @@map("documents")
 }
 
 // ======================================================

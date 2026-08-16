@@ -1,11 +1,6 @@
-// ======================================================
-// ENUMS
-// ======================================================
-
 enum UserRole {
   APPLICANT
   ADMIN
-  
 }
 
 enum SubscriptionType {
@@ -40,4 +35,19 @@ enum DocumentType {
   RECOMMENDATION
   STATEMENT
   OTHER
+}
+
+enum DocumentStatus {
+  NOT_UPLOADED
+  UPLOADED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
 }

@@ -1,0 +1,36 @@
+// ======================================================
+// EDUCATION MODELS
+// ======================================================
+
+model EducationSubject {
+  id              String          @id @default(cuid())
+  educationRecordId String
+  educationRecord EducationRecord @relation(fields: [educationRecordId], references: [id])
+  
+  name            String
+  grade           String?
+  score           Float?
+  
+  @@map("education_subjects")
+}
+
+model EducationRecord {
+  id              String          @id @default(cuid())
+  applicationId   String          @unique
+  application     Application     @relation(fields: [applicationId], references: [id])
+  
+  highSchool      String
+  graduationYear  String
+  wassceAggregate String?
+  gpa             Float?
+  gpaScale        Float?          @default(4.0)
+  classRank       String?
+  classSize       Int?
+  
+  subjects        EducationSubject[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("education_records")
+}
