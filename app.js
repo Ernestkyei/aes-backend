@@ -6,17 +6,27 @@ import authRoutes from './routes/authRoutes.js';
 const app = express();
 
 // ============================================
-// CORS Configuration
+// CORS Configuration - whitelist / dev-friendly
 // ============================================
-const corsOptions = {
-  origin: process.env.FRONTEND_URL ,
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://127.0.0.1:5174',
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow requests with no origin (e.g. curl, mobile apps, same-origin)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS policy: This origin is not allowed'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
-  optionsSuccessStatus: 200,
-};
-
-app.use(cors(corsOptions));
+}));
 
 // ============================================
 // Middleware

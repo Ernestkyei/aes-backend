@@ -1,0 +1,30 @@
+// ======================================================
+// SUBSCRIPTION MODELS
+// ======================================================
+
+model Subscription {
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id])
+  type            SubscriptionType
+  amount          Float
+  currency        String          @default("GHS")
+  paymentCode     String?         @unique
+  isValid         Boolean         @default(false)
+  validUntil      DateTime?
+  paymentId       String?         @unique
+  paymentStatus   PaymentStatus   @default(PENDING)
+  paidAt          DateTime?
+  
+  // Relations
+  paymentCodeRef  PaymentCode?
+  transactions    PaymentTransaction[]
+  
+  // Timestamps
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([paymentCode])
+  @@map("subscriptions")
+}

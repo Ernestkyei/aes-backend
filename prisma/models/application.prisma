@@ -1,82 +1,78 @@
 // ======================================================
-// APPLICATION MODELS
+// APPLICATION MODEL
 // ======================================================
 
 model Application {
   id              String          @id @default(cuid())
   userId          String
   user            User            @relation(fields: [userId], references: [id])
-  
+
+  ref             String?         @unique
+
   // Personal Information
+  firstName       String?
+  lastName        String?
   dateOfBirth     DateTime?
+  gender          Gender?
   nationality     String?
-  countryOfResidence String?
+  phoneNumber     String?
+  email           String?
   address         String?
-  
+  city            String?
+  country         String?
+  countryOfResidence String?
+
   // Academic Information
   highSchool      String?
-  graduationYear  Int?
+  graduationYear  String?
   gpa             Float?
   gpaScale        Float?          @default(4.0)
-  classRank       String?
-  classSize       Int?
-  
+  wassceAggregate String?
+
   // Program Information
   programChoice   String
-  
+  programType     String?
+  academicYear    String?
+
   // Test Scores
   satScore        Int?
   actScore        Int?
   ieltsScore      Float?
   toeflScore      Int?
-  
-  // Work Experience
+
+  // Work Experience & Extras
   workExperience  String?
   achievements    String?
   extracurricular String?
   personalStatement String?
-  
+
   // Status
   status          ApplicationStatus @default(DRAFT)
+  open            Boolean         @default(true)
+  isDraft         Boolean         @default(true)
+  outcome         String?
   submittedAt     DateTime?
-  
-  // Admin Review Fields
+
+  // Admin Review
   reviewedAt      DateTime?
   decisionDate    DateTime?
   decisionNotes   String?
   rejectionReason String?
-  
+
   // Relations
   documents       Document[]
   statusHistory   ApplicationStatusHistory[]
   adminNotes      AdminNote[]
-  
-  // Timestamps
+  educationRecord EducationRecord?
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   @@index([userId])
   @@index([status])
   @@index([programChoice])
+  @@index([academicYear])
+  @@index([open])
+  @@index([ref])
   @@map("applications")
-}
-
-// ======================================================
-// APPLICATION STATUS HISTORY
-// ======================================================
-
-model ApplicationStatusHistory {
-  id              String          @id @default(cuid())
-  applicationId   String
-  application     Application     @relation(fields: [applicationId], references: [id])
-  
-  oldStatus       ApplicationStatus?
-  newStatus       ApplicationStatus
-  changedBy       String
-  note            String?
-  
-  createdAt       DateTime        @default(now())
-
-  @@index([applicationId])
-  @@map("application_status_history")
 }
