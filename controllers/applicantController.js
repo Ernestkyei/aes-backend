@@ -1,7 +1,3 @@
-// ======================================================
-// APPLICANT CONTROLLER
-// ======================================================
-
 import * as applicantService from '../services/applicantService.js';
 
 // ======================================================
@@ -14,7 +10,6 @@ export function getAllApplications(req, res) {
   const search = req.query.search || '';
   const status = req.query.status || '';
   const userId = req.query.userId || '';
-
   applicantService.getAllApplications(page, limit, search, status, userId, (err, result) => {
     if (err) {
       return res.status(500).json({
@@ -23,7 +18,6 @@ export function getAllApplications(req, res) {
         errors: [err.message],
       });
     }
-
     res.status(200).json({
       success: true,
       message: 'Applications retrieved successfully',
@@ -39,7 +33,6 @@ export function getAllApplications(req, res) {
 
 export function getApplicationById(req, res) {
   const id = req.params.id;
-
   applicantService.getApplicationById(id, (err, application) => {
     if (err) {
       return res.status(500).json({
@@ -71,7 +64,6 @@ export function getApplicationById(req, res) {
 
 export function createApplication(req, res) {
   const applicationData = req.body;
-
   if (!applicationData.userId) {
     return res.status(400).json({
       success: false,
@@ -79,7 +71,6 @@ export function createApplication(req, res) {
       errors: ['userId is required to create an application'],
     });
   }
-
   if (!applicationData.programChoice) {
     return res.status(400).json({
       success: false,
@@ -96,7 +87,6 @@ export function createApplication(req, res) {
         errors: [err.message],
       });
     }
-
     res.status(201).json({
       success: true,
       message: 'Application created successfully',
@@ -108,12 +98,10 @@ export function createApplication(req, res) {
 // ======================================================
 // UPDATE APPLICATION
 // ======================================================
-
 export function updateApplication(req, res) {
   const id = req.params.id;
   const userId = req.user ? req.user.id : null;
   const updateData = req.body;
-
   if (!userId) {
     return res.status(401).json({
       success: false,
@@ -350,7 +338,6 @@ export function searchApplications(req, res) {
 
 export function getApplicationsByUser(req, res) {
   const userId = req.params.userId;
-
   if (!userId) {
     return res.status(400).json({
       success: false,
@@ -384,7 +371,6 @@ export function bulkUpdateStatus(req, res) {
   const ids = req.body.ids;
   const status = req.body.status;
   const userId = req.user ? req.user.id : null;
-
   if (!userId) {
     return res.status(401).json({
       success: false,
