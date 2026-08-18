@@ -250,6 +250,7 @@ export const createApplication = async function(data, callback) {
   }
 };
 
+
 // ======================================================
 // UPDATE APPLICATION
 // ======================================================
@@ -449,7 +450,6 @@ export const deleteApplication = async function(id, userId, callback) {
 // ======================================================
 // GET APPLICATION STATISTICS
 // ======================================================
-
 export const getStats = async function(callback) {
   try {
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);

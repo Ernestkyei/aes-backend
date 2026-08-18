@@ -40,7 +40,7 @@ app.use(morgan('dev'));
 // Routes
 // ============================================
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/applicants', applicantRoutes);  // ADD THIS
+app.use('/api/v1/applicants', applicantRoutes);  
 
 // ============================================
 // Serve Static Files (for admission letters)
