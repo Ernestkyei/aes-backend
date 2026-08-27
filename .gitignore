@@ -4,3 +4,4 @@ config/config.env
 .env
 .env.local
 .env.*.local
+config/config.env
