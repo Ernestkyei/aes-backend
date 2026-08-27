@@ -13,6 +13,7 @@
   "author": "Ernest Nkansah kyei",
   "license": "ISC",
   "dependencies": {
+    "@paystack/paystack-sdk": "^1.2.1",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.0",
     "axios": "^1.19.0",
@@ -23,7 +24,9 @@
     "fs-extra": "^11.4.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
+    "nodemailer": "^9.0.5",
     "pdfkit": "^0.19.1",
+    "twilio": "^6.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
