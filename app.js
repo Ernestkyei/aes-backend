@@ -2,7 +2,6 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
-import applicantRoutes from './routes/applicantRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -39,7 +38,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/applicants', applicantRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
