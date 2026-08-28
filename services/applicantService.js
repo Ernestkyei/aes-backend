@@ -453,7 +453,6 @@ export const deleteApplication = async function(id, userId, callback) {
 export const getStats = async function(callback) {
   try {
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
     const [
       total,
       draft,
