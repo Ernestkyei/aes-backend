@@ -2,39 +2,92 @@
 // ADMIN PORTAL MODELS
 // ======================================================
 
-model AdminNote {
-  id              String          @id @default(cuid())
-  applicationId   String
-  application     Application     @relation(fields: [applicationId], references: [id])
-  
-  adminId         String
-  admin           User            @relation(fields: [adminId], references: [id])
-  
-  content         String
-  category        String?
-  priority        String?
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-
-  @@index([applicationId])
-  @@index([adminId])
-  @@map("admin_notes")
-}
-
+// ============================================
+// 1. ADMIN ACTION LOG - Track what the admin does
+// ============================================
 model AdminActionLog {
   id              String          @id @default(cuid())
   adminId         String
   admin           User            @relation(fields: [adminId], references: [id])
   
-  action          String
-  targetType      String
+  action          String          // e.g., 'APPROVE', 'REJECT', 'UPDATE', 'DELETE', 'VIEW', 'LOGIN'
+  targetType      String          // e.g., 'APPLICATION', 'USER', 'PAYMENT', 'DOCUMENT'
   targetId        String
-  details         String?
+  details         String?         @db.Text
+  oldValues       Json?           // Store previous state (for updates/deletes)
+  newValues       Json?           // Store new state (for updates)
   ipAddress       String?
+  userAgent       String?
   
   createdAt       DateTime        @default(now())
 
   @@index([adminId])
+  @@index([targetType, targetId])
+  @@index([action])
+  @@index([createdAt])
   @@map("admin_action_logs")
+}
+
+// ============================================
+// 2. AUDIT LOG - Complete audit trail for everything
+// ============================================
+model AuditLog {
+  id              String          @id @default(cuid())
+  
+  // Who
+  userId          String?
+  user            User?           @relation(fields: [userId], references: [id])
+  userEmail       String?
+  userRole        String?
+  
+  // What
+  action          String          // e.g., 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN'
+  resourceType    String          // e.g., 'APPLICATION', 'USER', 'PAYMENT', 'DOCUMENT'
+  resourceId      String
+  
+  // What changed
+  oldValues       Json?
+  newValues       Json?
+  
+  // Context
+  details         String?         @db.Text
+  ipAddress       String?
+  userAgent       String?
+  
+  // Status
+  success         Boolean         @default(true)
+  errorMessage    String?         @db.Text
+  
+  createdAt       DateTime        @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// 3. STATUS HISTORY - Track application status changes
+// ============================================
+model StatusHistory {
+  id              String          @id @default(cuid())
+  applicationId   String
+  application     Application     @relation(fields: [applicationId], references: [id], onDelete: CASCADE)
+  
+  oldStatus       String
+  newStatus       String
+  
+  changedBy       String
+  changedByUser   User            @relation(fields: [changedBy], references: [id])
+  
+  reason          String?         @db.Text
+  ipAddress       String?
+  
+  createdAt       DateTime        @default(now())
+
+  @@index([applicationId])
+  @@index([changedBy])
+  @@index([createdAt])
+  @@map("status_history")
 }
