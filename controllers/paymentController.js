@@ -109,7 +109,7 @@ export const webhook = async (req, res) => {
   try {
     const event = req.body;
 
-    console.log('📦 Webhook received:', event.event);
+    console.log('Webhook received:', event.event);
 
     switch (event.event) {
       case 'charge.success':

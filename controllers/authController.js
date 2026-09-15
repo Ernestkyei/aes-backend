@@ -1,118 +1,92 @@
-// controllers/authController.js
 import {
-  registerStudent,
-  login,
+  verifyAccessCode,
   adminLogin,
-  verifyPaymentCode,
   getCurrentUser,
 } from '../services/authService.js';
 
-// ============================================
-// REGISTER CONTROLLER
-// ============================================
-export const register = async (req, res) => {
-  try {
-    const result = await registerStudent(req.body);
-    if (!result.success) {
-      if (result.message === 'User with this email already exists') {
-        return res.status(409).json(result);
-      }
-      return res.status(400).json(result);
-    }
-    return res.status(201).json(result);
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Registration failed',
-      error: error.message,
-    });
-  }
-};
 
-// ============================================
-// USER LOGIN CONTROLLER
-// ============================================
-export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const result = await login(email, password);
-    if (!result.success) {
-      return res.status(401).json(result);
-    }
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Login failed',
-      error: error.message,
-    });
-  }
-};
-
-// ============================================
-// ADMIN LOGIN CONTROLLER
-// ============================================
-export const loginAdmin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const result = await adminLogin(email, password);
-    if (!result.success) {
-      return res.status(401).json(result);
-    }
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Admin login failed',
-      error: error.message,
-    });
-  }
-};
-
-// ============================================
-// VERIFY PAYMENT CONTROLLER
-// ============================================
-export const verifyPayment = async (req, res) => {
+// Applicant Access Code Login
+export const accessCodeLogin = async (req, res) => {
   try {
     const { code } = req.body;
-    const result = await verifyPaymentCode(req.userId, code);
-    if (!result.success) {
-      return res.status(400).json(result);
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Access code is required',
+      });
     }
+
+    const result = await verifyAccessCode(code);
+
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+
     return res.status(200).json(result);
   } catch (error) {
+    console.error('Access code login controller error:', error);
+
     return res.status(500).json({
       success: false,
-      message: 'Payment verification failed',
-      error: error.message,
+      message: 'An error occurred while logging in',
     });
   }
 };
 
-// ============================================
-// GET CURRENT USER CONTROLLER
-// ============================================
+
+// Admin Login
+export const adminLoginController = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+      });
+    }
+
+    const result = await adminLogin(email, password);
+
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Admin login controller error:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during admin login',
+    });
+  }
+};
+
+
+// Get Current User
 export const getMe = async (req, res) => {
   try {
-    const userId = req.userId; // From auth middleware
-    const user = await getCurrentUser(userId);
-    
+    const user = await getCurrentUser(req.user.id);
+
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found',
       });
     }
-    
+
     return res.status(200).json({
       success: true,
-      user: user,
+      user,
     });
   } catch (error) {
+    console.error('Get current user controller error:', error);
+
     return res.status(500).json({
       success: false,
-      message: 'Failed to get user profile',
-      error: error.message,
+      message: 'An error occurred while getting current user',
     });
   }
 };
