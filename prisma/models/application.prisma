@@ -1,78 +1,78 @@
-// ======================================================
-// APPLICATION MODEL
-// ======================================================
+ // ======================================================
+ // APPLICATION MODEL
+ // ======================================================
 
-model Application {
-  id              String          @id @default(cuid())
-  userId          String
-  user            User            @relation(fields: [userId], references: [id])
+ model Application {
+   id              String          @id @default(cuid())
+   userId          String
+   user            User            @relation(fields: [userId], references: [id])
 
-  ref             String?         @unique
+   ref             String?         @unique
 
-  // Personal Information
-  firstName       String?
-  lastName        String?
-  dateOfBirth     DateTime?
-  gender          Gender?
-  nationality     String?
-  phoneNumber     String?
-  email           String?
-  address         String?
-  city            String?
-  country         String?
-  countryOfResidence String?
+   // Personal Information
+   firstName       String?
+   lastName        String?
+   dateOfBirth     DateTime?
+   gender          Gender?
+   nationality     String?
+   phoneNumber     String?
+   email           String?
+   address         String?
+   city            String?
+   country         String?
+   countryOfResidence String?
 
-  // Academic Information
-  highSchool      String?
-  graduationYear  String?
-  gpa             Float?
-  gpaScale        Float?          @default(4.0)
-  wassceAggregate String?
+   // Academic Information
+   highSchool      String?
+   graduationYear  String?
+   gpa             Float?
+   gpaScale        Float?          @default(4.0)
+   wassceAggregate String?
 
-  // Program Information
-  programChoice   String
-  programType     String?
-  academicYear    String?
+   // Program Information
+   programChoice   String?
+   programType     String?
+   academicYear    String?
 
-  // Test Scores
-  satScore        Int?
-  actScore        Int?
-  ieltsScore      Float?
-  toeflScore      Int?
+   // Test Scores
+   satScore        Int?
+   actScore        Int?
+   ieltsScore      Float?
+   toeflScore      Int?
 
-  // Work Experience & Extras
-  workExperience  String?
-  achievements    String?
-  extracurricular String?
-  personalStatement String?
+   // Work Experience & Extras
+   workExperience  String?
+   achievements    String?
+   extracurricular String?
+   personalStatement String?
 
-  // Status
-  status          ApplicationStatus @default(DRAFT)
-  open            Boolean         @default(true)
-  isDraft         Boolean         @default(true)
-  outcome         String?
-  submittedAt     DateTime?
+   // Status
+   status          ApplicationStatus @default(DRAFT)
+   open            Boolean         @default(true)
+   isDraft         Boolean         @default(true)
+   outcome         String?
+   submittedAt     DateTime?
 
-  // Admin Review
-  reviewedAt      DateTime?
-  decisionDate    DateTime?
-  decisionNotes   String?
-  rejectionReason String?
+   // Admin Review
+   reviewedAt      DateTime?
+   decisionDate    DateTime?
+   decisionNotes   String?
+   rejectionReason String?
 
-  // Relations
-  documents       Document[]
-  statusHistory   ApplicationStatusHistory[]
-  adminNotes      AdminNote[]
-  educationRecord EducationRecord?
+   // Relations
+   documents       Document[]
+   statusHistory   StatusHistory[]
+   applicationStatusHistory ApplicationStatusHistory[]
+   educationRecord EducationRecord?
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+   createdAt       DateTime        @default(now())
+   updatedAt       DateTime        @updatedAt
 
-  @@index([userId])
-  @@index([status])
-  @@index([programChoice])
-  @@index([academicYear])
-  @@index([open])
-  @@index([ref])
-  @@map("applications")
-}
+   @@index([userId])
+   @@index([status])
+   @@index([programChoice])
+   @@index([academicYear])
+   @@index([open])
+   @@index([ref])
+   @@map("applications")
+ }
