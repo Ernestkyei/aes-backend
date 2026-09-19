@@ -1,0 +1,17 @@
+model AdminNote {
+  id            String    @id @default(cuid())
+  applicationId String
+  adminId       String
+  content       String
+  category      String?
+  priority      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  application   Application @relation(fields: [applicationId], references: [id])
+  admin         User        @relation(fields: [adminId], references: [id])
+
+  @@index([applicationId])
+  @@index([adminId])
+  @@map("admin_notes")
+}

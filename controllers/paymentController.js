@@ -67,6 +67,7 @@ export const initializePaymentRequest = async (req, res) => {
 // VERIFY PAYMENT
 
 // ============================================================
+// VERIFY PAYMENT
 export const verifyPaymentRequest = async (req, res) => {
   try {
     const { reference } = req.query;
@@ -85,6 +86,7 @@ export const verifyPaymentRequest = async (req, res) => {
         success: true,
         message: 'Payment verified successfully',
         data: result.data,
+        accessCode: result.accessCode || null,
       });
     }
 
@@ -92,14 +94,18 @@ export const verifyPaymentRequest = async (req, res) => {
       success: false,
       message: result.message || 'Payment verification failed',
     });
+
   } catch (error) {
     console.error('Payment verification error:', error);
+
     return res.status(500).json({
       success: false,
       message: error.message || 'Payment verification failed',
     });
   }
 };
+
+
 
 // ============================================================
 // PAYSTACK WEBHOOK

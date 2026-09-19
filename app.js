@@ -6,6 +6,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import applicantRoutes from './routes/applicantRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js'
+import subscriptionRoutes from './routes/subscriptionRoutes.js';
+
 
 const app = express();
 
@@ -41,7 +43,8 @@ app.use(morgan('dev'));
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/applicants', applicantRoutes);
-app.use('/api/v1/payments', paymentRoutes)
+app.use('/api/v1/subscriptions', subscriptionRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

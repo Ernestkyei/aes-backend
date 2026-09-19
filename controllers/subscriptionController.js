@@ -9,7 +9,6 @@ import { initializePayment } from "../services/paymentService.js";
 // ======================================================
 // CREATE SUBSCRIPTION
 // ======================================================
-
 export const createSubscriptionController = async (req, res) => {
   try {
     const {
@@ -102,7 +101,6 @@ export const createSubscriptionController = async (req, res) => {
 
   } catch (error) {
     console.error("Create subscription controller error:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message || "An error occurred while creating subscription",
@@ -118,7 +116,6 @@ export const createSubscriptionController = async (req, res) => {
 export const getSubscription = async (req, res) => {
   try {
     const { id } = req.params;
-
     const subscription = await getSubscriptionById(id);
 
     return res.status(200).json({
@@ -144,7 +141,6 @@ export const getSubscription = async (req, res) => {
 export const getMySubscription = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const subscription = await getSubscriptionByUserId(userId);
 
     if (!subscription) {
@@ -153,7 +149,7 @@ export const getMySubscription = async (req, res) => {
         message: "Subscription not found",
       });
     }
-
+      
     return res.status(200).json({
       success: true,
       subscription,
@@ -161,7 +157,6 @@ export const getMySubscription = async (req, res) => {
 
   } catch (error) {
     console.error("Get my subscription controller error:", error);
-
     return res.status(500).json({
       success: false,
       message: "An error occurred while getting subscription",
