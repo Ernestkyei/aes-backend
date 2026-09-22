@@ -45,7 +45,6 @@ export const initializePayment = async (email, amount, metadata = {}) => {
 // ======================================================
 // VERIFY PAYMENT
 // ======================================================
-
 export const verifyPayment = async (reference) => {
   try {
     const response = await paystack.verifyPayment(reference);
@@ -65,7 +64,6 @@ export const verifyPayment = async (reference) => {
       throw new Error('Payment transaction not found');
     }
 
-
     // ----------------------------------------------
     // PAYMENT SUCCESSFUL
     // ----------------------------------------------
@@ -78,10 +76,10 @@ export const verifyPayment = async (reference) => {
       );
 
       const paidAmount = Number(response.data.amount);
+
       if (paidAmount !== expectedAmount) {
         throw new Error('Payment amount mismatch');
       }
-
 
       // Check currency
       if (response.data.currency !== transaction.currency) {
@@ -89,32 +87,44 @@ export const verifyPayment = async (reference) => {
       }
 
       // Process successful payment
-      await handleSuccessfulPayment(response.data);
+      const paymentResult = await handleSuccessfulPayment(
+        response.data
+      );
 
-    } else {
-
-      // Payment was not successful
-      await prisma.paymentTransaction.update({
-        where: { reference },
-        data: {
-          status: 'FAILED',
-          paidAt: response.data.paid_at
-            ? new Date(response.data.paid_at)
-            : null,
-          responseData: JSON.stringify(response.data),
-        },
-      });
-
+      return {
+        status: true,
+        message: 'Verification successful',
+        data: response.data,
+        accessCode: paymentResult.code,
+      };
     }
 
-    return response;
+    // ----------------------------------------------
+    // PAYMENT NOT SUCCESSFUL
+    // ----------------------------------------------
+
+    await prisma.paymentTransaction.update({
+      where: { reference },
+      data: {
+        status: 'FAILED',
+        paidAt: response.data.paid_at
+          ? new Date(response.data.paid_at)
+          : null,
+        responseData: JSON.stringify(response.data),
+      },
+    });
+
+    return {
+      status: false,
+      message: `Payment status: ${response.data.status}`,
+      data: response.data,
+    };
 
   } catch (error) {
     console.error('Payment verification error:', error);
     throw error;
   }
 };
-
 
 // ======================================================
 // HANDLE SUCCESSFUL PAYMENT

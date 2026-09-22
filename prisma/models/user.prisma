@@ -1,22 +1,23 @@
 model User {
-  id           String           @id @default(cuid())
-  email        String           @unique
-  password     String?
-  firstName    String
-  lastName     String
-  phoneNumber  String?
-  role         UserRole         @default(APPLICANT)
-  isActive     Boolean          @default(true)
-  lastLogin    DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  activityLogs ActivityLog[]
-  adminActions AdminActionLog[]
-  adminNotes   AdminNote[]
-  applications Application[]
-  documents    Document[]
-  paymentCodes PaymentCode[]
-  subscription Subscription?
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  password            String?
+  firstName           String
+  lastName            String
+  phoneNumber         String?
+  role                UserRole             @default(APPLICANT)
+  isActive            Boolean              @default(true)
+  lastLogin           DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  activityLogs        ActivityLog[]
+  adminActions        AdminActionLog[]
+  adminNotes          AdminNote[]
+  applications        Application[]
+  documents           Document[]
+  paymentCodes        PaymentCode[]
+  paymentTransactions PaymentTransaction[]
+  subscription        Subscription?
 
   @@map("users")
 }
