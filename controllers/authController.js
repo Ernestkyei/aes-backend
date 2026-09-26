@@ -9,7 +9,6 @@ import {
 export const accessCodeLogin = async (req, res) => {
   try {
     const { code } = req.body;
-
     if (!code) {
       return res.status(400).json({
         success: false,
@@ -18,7 +17,6 @@ export const accessCodeLogin = async (req, res) => {
     }
 
     const result = await verifyAccessCode(code);
-
     if (!result.success) {
       return res.status(401).json(result);
     }
@@ -68,7 +66,7 @@ export const adminLoginController = async (req, res) => {
 // Get Current User
 export const getMe = async (req, res) => {
   try {
-    const user = await getCurrentUser(req.user.id);
+    const user = await getCurrentUser(req.userId);
 
     if (!user) {
       return res.status(404).json({
