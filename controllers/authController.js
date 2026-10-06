@@ -67,6 +67,7 @@ export const adminLoginController = async (req, res) => {
 export const getMe = async (req, res) => {
   try {
     const user = await getCurrentUser(req.userId);
+    
 
     if (!user) {
       return res.status(404).json({
