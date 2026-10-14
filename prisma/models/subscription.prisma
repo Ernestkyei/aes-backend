@@ -20,3 +20,19 @@ model Subscription {
   @@index([paymentCode])
   @@map("subscriptions")
 }
+
+
+model SubscriptionPackage {
+  id        String           @id @default(cuid())
+  code      SubscriptionType @unique
+  name      String
+  price     Float
+  currency  String           @default("GHS")
+  features  Json?
+  active    Boolean          @default(true)
+  highlight Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("subscription_packages")
+}

@@ -2,13 +2,38 @@ import {
   createSubscription,
   getSubscriptionById,
   getSubscriptionByUserId,
+  getAvailablePackages,
 } from "../services/subscriptionService.js";
+
 import { initializePayment } from "../services/paymentService.js";
 
+// ======================================================
+// GET AVAILABLE SUBSCRIPTION PACKAGES
+// ======================================================
+
+export const getSubscriptionPackages = async (req, res) => {
+  try {
+    const packages = await getAvailablePackages();
+
+    return res.status(200).json({
+      success: true,
+      message: "Subscription packages retrieved successfully",
+      data: packages,
+    });
+  } catch (error) {
+    console.error("Get subscription packages error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to retrieve subscription packages",
+    });
+  }
+};
 
 // ======================================================
 // CREATE SUBSCRIPTION
 // ======================================================
+
 export const createSubscriptionController = async (req, res) => {
   try {
     const {
@@ -47,7 +72,8 @@ export const createSubscriptionController = async (req, res) => {
       });
     }
 
-    // Create applicant, application and subscription
+    // Create applicant, application and subscription.
+    // The backend determines the subscription amount.
     const result = await createSubscription({
       firstName,
       lastName,
@@ -64,7 +90,7 @@ export const createSubscriptionController = async (req, res) => {
       type,
     });
 
-    // Initialize Paystack payment
+    // Initialize Paystack using the backend subscription amount
     const payment = await initializePayment(
       email,
       result.subscription.amount,
@@ -98,16 +124,16 @@ export const createSubscriptionController = async (req, res) => {
         },
       },
     });
-
   } catch (error) {
     console.error("Create subscription controller error:", error);
+
     return res.status(500).json({
       success: false,
-      message: error.message || "An error occurred while creating subscription",
+      message:
+        error.message || "An error occurred while creating subscription",
     });
   }
 };
-
 
 // ======================================================
 // GET SUBSCRIPTION BY ID
@@ -122,7 +148,6 @@ export const getSubscription = async (req, res) => {
       success: true,
       subscription,
     });
-
   } catch (error) {
     console.error("Get subscription controller error:", error);
 
@@ -133,9 +158,8 @@ export const getSubscription = async (req, res) => {
   }
 };
 
-
 // ======================================================
-// GET SUBSCRIPTION BY USER
+// GET SUBSCRIPTION BY LOGGED-IN USER
 // ======================================================
 
 export const getMySubscription = async (req, res) => {
@@ -149,17 +173,18 @@ export const getMySubscription = async (req, res) => {
         message: "Subscription not found",
       });
     }
-      
+
     return res.status(200).json({
       success: true,
       subscription,
     });
-
   } catch (error) {
     console.error("Get my subscription controller error:", error);
+
     return res.status(500).json({
       success: false,
       message: "An error occurred while getting subscription",
     });
   }
 };
+

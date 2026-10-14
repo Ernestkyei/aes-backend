@@ -4,13 +4,17 @@ import {
   createSubscriptionController,
   getSubscription,
   getMySubscription,
+  getSubscriptionPackages,
 } from "../controllers/subscriptionController.js";
 
 import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Create subscription + initialize payment
+// Get available subscription packages and prices
+router.get("/packages", getSubscriptionPackages);
+
+// Create subscription and initialize payment
 router.post("/", createSubscriptionController);
 
 // Get logged-in applicant's subscription
@@ -20,3 +24,4 @@ router.get("/my-subscription", authMiddleware, getMySubscription);
 router.get("/:id", getSubscription);
 
 export default router;
+

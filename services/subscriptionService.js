@@ -1,10 +1,88 @@
+
 import prisma from "../config/database.js";
 
-const PACKAGE_PRICES = {
-  UNDERGRAD: 200,
-  POSTGRAD: 300,
-  INTERNATIONAL: 400,
+// ======================================================
+// GENDER VALIDATION
+// ======================================================
+
+const ALLOWED_GENDERS = [
+  "MALE",
+  "FEMALE",
+  "OTHER",
+  "PREFER_NOT_TO_SAY",
+];
+
+function normalizeGender(gender) {
+  const normalized = String(gender ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+
+  if (!ALLOWED_GENDERS.includes(normalized)) {
+    throw new Error("Please provide a valid gender");
+  }
+
+  return normalized;
+}
+
+// ======================================================
+// GET AVAILABLE SUBSCRIPTION PACKAGES
+// Packages are retrieved from the database.
+// ======================================================
+
+export const getAvailablePackages = async () => {
+  const packages = await prisma.subscriptionPackage.findMany({
+    where: {
+      active: true,
+    },
+    orderBy: {
+      price: "asc",
+    },
+  });
+
+  return packages.map((pkg) => ({
+    code: pkg.code,
+    name: pkg.name,
+    price: pkg.price,
+    currency: pkg.currency,
+    features: Array.isArray(pkg.features) ? pkg.features : [],
+    highlight: pkg.highlight,
+  }));
 };
+
+// ======================================================
+// GET ONE SUBSCRIPTION PACKAGE
+// The price always comes from the database.
+// ======================================================
+
+export const getSubscriptionPackageByCode = async (code) => {
+  const normalizedCode = String(code ?? "")
+    .trim()
+    .toUpperCase();
+
+  const pkg = await prisma.subscriptionPackage.findUnique({
+    where: {
+      code: normalizedCode,
+    },
+  });
+
+  if (!pkg || !pkg.active) {
+    throw new Error("Invalid or unavailable subscription package");
+  }
+
+  return {
+    code: pkg.code,
+    name: pkg.name,
+    price: pkg.price,
+    currency: pkg.currency,
+    features: Array.isArray(pkg.features) ? pkg.features : [],
+    highlight: pkg.highlight,
+  };
+};
+
+// ======================================================
+// CREATE SUBSCRIPTION
+// ======================================================
 
 export const createSubscription = async ({
   firstName,
@@ -22,23 +100,60 @@ export const createSubscription = async ({
   type,
 }) => {
   try {
-    // Validate subscription type
-    const amount = PACKAGE_PRICES[type];
+    // Normalize and validate the requested package.
+    const normalizedType = String(type ?? "")
+      .trim()
+      .toUpperCase();
 
-    if (!amount) {
-      throw new Error("Invalid subscription type");
+    // Retrieve the package and price from the database.
+    const packageConfig =
+      await getSubscriptionPackageByCode(normalizedType);
+
+    const amount = packageConfig.price;
+    const currency = packageConfig.currency;
+
+    // Validate required applicant details.
+    if (
+      !firstName?.trim() ||
+      !lastName?.trim() ||
+      !dateOfBirth ||
+      !nationality?.trim() ||
+      !email?.trim() ||
+      !phoneNumber?.trim() ||
+      !address?.trim() ||
+      !city?.trim() ||
+      !country?.trim()
+    ) {
+      throw new Error(
+        "Please provide all required applicant details"
+      );
     }
 
+    // Validate date of birth.
+    const parsedDateOfBirth = new Date(dateOfBirth);
+
+    if (Number.isNaN(parsedDateOfBirth.getTime())) {
+      throw new Error("Please provide a valid date of birth");
+    }
+
+    if (parsedDateOfBirth > new Date()) {
+      throw new Error("Date of birth cannot be in the future");
+    }
+
+    // Normalize gender.
+    const normalizedGender = normalizeGender(gender);
+
+    // Normalize email.
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Check if applicant already exists
+    // Check whether the applicant already exists.
     let user = await prisma.user.findUnique({
       where: {
         email: normalizedEmail,
       },
     });
 
-    // Prevent an existing applicant from creating another subscription
+    // Prevent duplicate subscriptions for the same user.
     if (user) {
       const existingSubscription =
         await prisma.subscription.findUnique({
@@ -52,60 +167,60 @@ export const createSubscription = async ({
       }
     }
 
-    // Create user, application and subscription together
+    // Create applicant, application and subscription together.
     const result = await prisma.$transaction(async (tx) => {
-      // Create applicant user if they don't exist
+      // Create applicant if they do not already exist.
       if (!user) {
         user = await tx.user.create({
           data: {
-            firstName,
-            lastName,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
             email: normalizedEmail,
-            phoneNumber,
+            phoneNumber: phoneNumber.trim(),
             role: "APPLICANT",
             isActive: true,
           },
         });
       }
 
-      // Create application
+      // Create application.
       const application = await tx.application.create({
         data: {
           userId: user.id,
-          firstName,
-          lastName,
-          dateOfBirth: new Date(dateOfBirth),
-          gender,
-          nationality,
-          phoneNumber,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          dateOfBirth: parsedDateOfBirth,
+          gender: normalizedGender,
+          nationality: nationality.trim(),
+          phoneNumber: phoneNumber.trim(),
           email: normalizedEmail,
-          address,
-          city,
-          country,
+          address: address.trim(),
+          city: city.trim(),
+          country: country.trim(),
           status: "DRAFT",
           isDraft: true,
           open: true,
         },
       });
 
-      // Create subscription
+      // Create subscription using the database price.
       const subscription = await tx.subscription.create({
         data: {
           userId: user.id,
-          type,
+          type: normalizedType,
           amount,
-          currency: "GHS",
+          currency,
           paymentStatus: "PENDING",
           isValid: false,
         },
       });
 
-      // Activity log
+      // Record activity.
       await tx.activityLog.create({
         data: {
           userId: user.id,
           action: "SUBSCRIPTION_CREATED",
-          details: `Created ${type} subscription for GHS ${amount}`,
+          details: `Created ${normalizedType} subscription for ${currency} ${amount}`,
         },
       });
 
@@ -118,6 +233,12 @@ export const createSubscription = async ({
 
     return {
       ...result,
+      package: {
+        code: packageConfig.code,
+        name: packageConfig.name,
+        price: packageConfig.price,
+        currency: packageConfig.currency,
+      },
       paymentMethod,
       momoNetwork,
     };
@@ -126,6 +247,10 @@ export const createSubscription = async ({
     throw error;
   }
 };
+
+// ======================================================
+// GET SUBSCRIPTION BY ID
+// ======================================================
 
 export const getSubscriptionById = async (id) => {
   try {
@@ -151,6 +276,10 @@ export const getSubscriptionById = async (id) => {
   }
 };
 
+// ======================================================
+// GET SUBSCRIPTION BY USER ID
+// ======================================================
+
 export const getSubscriptionByUserId = async (userId) => {
   try {
     return await prisma.subscription.findUnique({
@@ -168,11 +297,13 @@ export const getSubscriptionByUserId = async (userId) => {
   }
 };
 
+// ======================================================
+// ACTIVATE SUBSCRIPTION AFTER VERIFIED PAYMENT
+// ======================================================
+
 export const activateSubscription = async (subscriptionId) => {
   try {
     const validUntil = new Date();
-
-    // Subscription lasts for one year
     validUntil.setFullYear(validUntil.getFullYear() + 1);
 
     return await prisma.subscription.update({
@@ -192,17 +323,25 @@ export const activateSubscription = async (subscriptionId) => {
   }
 };
 
+// ======================================================
+// ADD PAYMENT CODE TO SUBSCRIPTION
+// ======================================================
+
 export const addPaymentCodeToSubscription = async (
   subscriptionId,
   code
 ) => {
   try {
+    if (!code || !String(code).trim()) {
+      throw new Error("A valid payment code is required");
+    }
+
     return await prisma.subscription.update({
       where: {
         id: subscriptionId,
       },
       data: {
-        paymentCode: code,
+        paymentCode: String(code).trim(),
       },
     });
   } catch (error) {
@@ -210,6 +349,10 @@ export const addPaymentCodeToSubscription = async (
     throw error;
   }
 };
+
+// ======================================================
+// CHECK SUBSCRIPTION VALIDITY
+// ======================================================
 
 export const isSubscriptionValid = async (userId) => {
   try {
@@ -222,6 +365,7 @@ export const isSubscriptionValid = async (userId) => {
     if (!subscription) return false;
     if (!subscription.isValid) return false;
     if (!subscription.validUntil) return false;
+
     return subscription.validUntil > new Date();
   } catch (error) {
     console.error("Check subscription validity error:", error);
