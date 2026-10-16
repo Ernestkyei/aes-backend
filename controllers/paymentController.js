@@ -20,7 +20,6 @@ export const initializePaymentRequest = async (req, res) => {
   try {
     const { email, amount, subscriptionId } = req.body;
     const userId = req.user.id;
-
     if (!email || !amount || !subscriptionId) {
       return res.status(400).json({
         success: false,
