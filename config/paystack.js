@@ -1,6 +1,5 @@
 // config/paystack.js
 import axios from 'axios';
-
 const getSecretKey = () => process.env.PAYSTACK_SECRET_KEY;
 
 // Initialize payment
@@ -19,7 +18,6 @@ export const initializePayment = async (
     }
 
     const callbackUrl = `${applicantUrl}${callbackPath}`;
-
     console.log('PAYSTACK CALLBACK URL:', callbackUrl);
 
     const response = await axios.post(

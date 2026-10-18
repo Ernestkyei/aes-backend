@@ -122,7 +122,6 @@ export const getAllApplications = async function(
 // ======================================================
 // GET APPLICATION BY ID
 // ======================================================
-
 export const getApplicationById = async function(id, callback) {
   try {
     const application = await prisma.application.findUnique({
@@ -603,7 +602,6 @@ export const bulkUpdateStatus = async function(ids, status, userId, callback) {
       })
     );
     await Promise.all(logPromises);
-
     return maybeCallback(callback, null, result);
   } catch (err) {
     return maybeCallback(callback, err);
